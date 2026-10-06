@@ -1,0 +1,55 @@
+name: RIZO Telegram Bot
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Upgrade pip
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Install requirements
+        run: |
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install "aiogram>=3.7,<4.0"
+          fi
+
+      - name: Start Telegram Bot
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path("bot.py")
+          text = p.read_text(encoding="utf-8")
+
+          text = re.sub(
+              r'^BOT_TOKEN\s*=.*$',
+              'BOT_TOKEN = __import__("os").environ["BOT_TOKEN"]',
+              text,
+              flags=re.MULTILINE
+          )
+
+          p.write_text(text, encoding="utf-8")
+          PY
+
+          python bot.py
